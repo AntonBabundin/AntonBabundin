@@ -1,4 +1,0 @@
-fir_rx_chirp_tst
-fir_rx_max_tst
-fir_rx_overflow_tst
-fir_rx_zero_tst
