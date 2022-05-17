@@ -1,0 +1,15 @@
+compilation:
+  so_flags: -shared -lstdc++ -lm -Bsymbolic -fPIC
+  obj_flags: -fPIC -g -c -std=c++14 -O0
+  defines: -DACT_FRAME_FROM_SVD4x4 -DCOSIM_FILESET -DRX_BB_TOP -DTX_BB_TOP -DRX_TD -DTX_TD -DCOSIM -DCHECK_OFF
+
+# Flags for .so compilation
+# -fPIC         - emit position independent code
+# -g            - include debug info
+# -W            - add extra warnings (same as -Wextra)
+# -c            - compile as object file
+# -shared       - make shared binary
+# -lstdc++      - link with standard C++ library
+# -lm           - link with math library
+# -std=c++14    - C model uses C++ 14 d=languade standard
+# -O0           - do not optimize (might be swapped with -O3)
