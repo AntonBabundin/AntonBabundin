@@ -1,4 +1,6 @@
 import subprocess
+import shutil
+import os
 import yaml
 import re
 from pathlib import Path
@@ -13,6 +15,8 @@ _c_model_meta = 'c_model_meta.txt'
 _main_cmpl_output = 'main.so'
 _makefile_name = 'makefile.f'
 _dir_with_settings_name = 'txRxTest11ac'
+_files_to_del = ['test', 'src', 'Readme.txt', 'makefile.f', 'build', 'modules', 'prj', 
+                'CMakeLists.txt', 'exec_regression', 'rtl_test.mk', 'run_precommit', 'RFICfiles']
 
 _command = {"help": "This command is for clone and compile C model from SYS repo with different modes.", 
             "params": [{"name": "mode",
@@ -21,69 +25,56 @@ _command = {"help": "This command is for clone and compile C model from SYS repo
 
                        {"name": "repo_commit",
                         "help": "Hash or branch name",
-                        "default": None},
-
-                       {"name": "comp_args",
-                        "help": "Any additional arguments for run compilation process",
                         "default": None}]}
 ####Main func(Start for script)####
 def run(core):
-    global _path_to_zip
-    _path_to_zip = core.project.get_var("COMPILED_MODEL_STORAGE")
+    path_to_zip = core.project.get_var("GM_DIR")
     if core.args.mode == _mode_list[0]:
-        check_zip =subprocess.run(['test', '-f', f'{Path(_path_to_zip, _c_model_arch)}'], stderr = subprocess.DEVNULL).returncode == 0
-        check_meta =subprocess.run(['test', '-f', f'{Path(_path_to_zip, _c_model_meta)}'], stderr = subprocess.DEVNULL).returncode == 0 
+        check_zip = Path(path_to_zip, _c_model_arch).is_file()
+        check_meta = Path(path_to_zip, _c_model_meta).is_file()
         if not check_zip: # check exist zip
-            Logger.fatal(f"Please add: {_c_model_arch} to dir: {_path_to_zip}.\nAnd rerun script")
+            Logger.fatal(f"Please add: {_c_model_arch} to dir: {path_to_zip}.\nAnd rerun script")
         elif not check_meta: # check exist meta
-            Logger.fatal(f"Please add: {_c_model_meta} to dir: {_path_to_zip}.\nAnd rerun script")
+            Logger.fatal(f"Please add: {_c_model_meta} to dir: {path_to_zip}.\nAnd rerun script")
         elif not (check_zip and check_meta):
-            Logger.fatal(f"Please add: {_c_model_arch} and {_c_model_meta}  to dir: {_path_to_zip}.\nAnd rerun script")
+            Logger.fatal(f"Please add: {_c_model_arch} and {_c_model_meta}  to dir: {path_to_zip}.\nAnd rerun script")
         else:
-            unpack_zip()
-            copy_dir()
+            unpack_zip(path_to_zip)
+            copy_dir(path_to_zip)
             Logger.info("Script completed")
     elif core.args.mode == _mode_list[1]:
-        check_repo =subprocess.run(['test', '-f', 'makefile.f'], stderr = subprocess.DEVNULL).returncode == 0
+        check_repo = Path(_makefile_name).is_file()
         if not check_repo: # check exist repo
-            seq_with_clone_repo(core)
+            seq_with_clone_repo(core, path_to_zip)
         else:
             seq_without_clone_repo(core)
 ####Internal functions####
-def seq_with_clone_repo(core):
-    Logger.info("Clonning sys repo")
-    clone_git_repo(core)
-    Logger.info("Start compilation")
+def seq_with_clone_repo(core, path_to_zip):
+    clone_git_repo(core, path_to_zip)
     c_main_cmpl(core)
-    Logger.info("Compilation Success")
     clear_repo_dir()
-    Logger.info("Script completed")
     return 0
 
 def seq_without_clone_repo(core):
-    Logger.info("Sys repo exist")
-    Logger.info("Start compilation")
     c_main_cmpl(core)
-    Logger.info("Compilation Success")
     clear_repo_dir()
-    Logger.info("Script completed")
     return 0
 
 def clear_repo_dir():
-    subprocess.run(['mv', '-t', f'{Path.cwd().parent}', f'{Path(Path.cwd(), "test", _dir_with_settings_name)}', f'{Path(Path.cwd(), _main_cmpl_output)}'], stderr = subprocess.DEVNULL)
-    subprocess.call(f'rm -rf {Path(Path.cwd(), "*")}',shell = True, stderr = subprocess.STDOUT)
-    subprocess.run(['mv', '-t', f'{Path.cwd()}', f'{Path(Path.cwd().parent, _dir_with_settings_name)}', f'{Path(Path.cwd().parent, _main_cmpl_output)}'], stderr = subprocess.DEVNULL)
+    shutil.copytree(Path(Path.cwd(), "test", _dir_with_settings_name), Path.cwd(), dirs_exist_ok=True) # Copy all settings from folder
+    subprocess.call(['rm','-rf'] + _files_to_del)
+    Logger.info("Script completed")
 
-def unpack_zip():
+def unpack_zip(_path_to_zip):
     Logger.info(f'Unpacking {_c_model_arch}')
-    exit_code = subprocess.run(['unzip', f'{Path(_path_to_zip, _c_model_arch)}', '-d', f'{_path_to_zip}'],stdout = subprocess.DEVNULL, stderr = subprocess.DEVNULL).returncode == 0
+    exit_code = subprocess.run(['unzip', f'{Path(_path_to_zip, _c_model_arch)}', '-d', f'{_path_to_zip}'], stdout = subprocess.DEVNULL, stderr = subprocess.DEVNULL).returncode == 0
     if not exit_code:
         Logger.fatal("Error, unpacking fail")
     else:
         Logger.info("Unpacking success!!")
         return 0
 
-def copy_dir():
+def copy_dir(_path_to_zip):
     Logger.info('Start cloning files')
     subprocess.run([f'cp', '--remove-destination', f'{Path(_path_to_zip, _c_model_meta)}', f'{_run_dir}'], stderr = subprocess.DEVNULL)
     files_copy = subprocess.run(['cp', '--remove-destination', f'{Path(_path_to_zip, _dir_with_settings_name, "*")}', f'{_run_dir}'], stderr = subprocess.DEVNULL)
@@ -103,9 +94,9 @@ def copy_dir():
     Logger.info(f'Success cloning to dir {_run_dir}')
     return 0
 
-def clone_git_repo(core):
+def clone_git_repo(core, _path_to_zip):
     git_repo_commit = core.args.repo_commit
-    git_repo_addr   = core.project.get_var("GIT_SYS_REP_ARRD")
+    git_repo_addr   = core.project.get_var("GIT_SYS_REP_ADDR")
     def clone_git(commit):
         subprocess.run(['git', 'init'], stderr = subprocess.DEVNULL)
         subprocess.run(['git', 'remote', 'add', 'origin', f"{git_repo_addr}"], stderr = subprocess.DEVNULL)
@@ -119,8 +110,10 @@ def clone_git_repo(core):
             content = f.readlines()
             string = ''.join(content)
         commit_dflt = re.search(r'commit (\w+)', string).group(1) # Reading commit from meta with regexp
+        Logger.info("Clonning sys repo")
         clone_git(commit_dflt)
     else:
+        Logger.info("Clonning sys repo")
         clone_git(git_repo_commit)
         return 0
 
@@ -151,21 +144,23 @@ def c_main_cmpl(core):
     tool = core.get_tool("CPP")    # Get c++ compilator path from tools.yaml
     tool.setup()
     with open(core.project.get_var('GCC_SETTING_BASE'), "r") as stream:  # Open gcc.yaml with flags
-            flags_dict = (yaml.safe_load(stream))
+        flags_dict = (yaml.safe_load(stream))
     comp_flags = flags_dict["compilation"]
     _so_flags = comp_flags["so_flags"]
     _cosim_defs = comp_flags["defines"]
-    _obj_flags = f'{comp_flags["obj_flags"]} -I {" -I ".join(clib_dirs_list)} -I {tool.lib}/../include {_cosim_defs} '
+    _obj_flags = f'{comp_flags["obj_flags"]} -I {" -I ".join(clib_dirs_list)} -I {Path(tool.lib,"..", "include")} {_cosim_defs} '
+    Logger.info("Start compilation")
     for i in range(len(clib_cpp_files_list)):
-        check_cmpl = subprocess.call(f"{tool.bin_path}/{tool.executable} {_obj_flags} -o {clib_o_files_list[i]} {clib_cpp_files_list[i]}", shell=True, stderr = subprocess.DEVNULL)
+        check_cmpl = subprocess.call(f"{Path(tool.bin_path, tool.executable)} {_obj_flags} -o {clib_o_files_list[i]} {clib_cpp_files_list[i]}", shell=True, stderr = subprocess.DEVNULL)
         if check_cmpl != 0:
             Logger.fatal(f"{clib_cpp_files_list[i]} was not compiled")
         else:
             Logger.info(f"{clib_cpp_files_list[i]} was compiled")
     # Compile .so file
-    check_so = subprocess.call(f"{tool.bin_path}/{tool.executable} {_so_flags} -o {_main_cmpl_output} {' '.join(clib_o_files_list)}", shell=True, stderr = subprocess.DEVNULL)
+    check_so = subprocess.call(f"{Path(tool.bin_path, tool.executable)} {_so_flags} -o {_main_cmpl_output} {' '.join(clib_o_files_list)}", shell=True, stderr = subprocess.DEVNULL)
     if check_so != 0:
         Logger.fatal(f"{_main_cmpl_output} was not compiled")
     else:
         Logger.info(f"{_main_cmpl_output} was compiled")
+        Logger.info("Compilation Success")
         return 0
