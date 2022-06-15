@@ -1,6 +1,8 @@
 import subprocess
 from core.logger import Logger
 from core.project import Project
+from pathlib import Path
+import shutil
 
 _command = {'help': "Script for clonning directory", 
             'params': [{"name": "dest", "help": "Directory, where you will copy files", "default": None}]}
@@ -26,16 +28,17 @@ def copy_dir(core):
     Logger.info('Start cloning dir with full permission')
     files_base = ['*.yaml', 'rpt', 'session_*.f', 'cad_settings_*.f', 'design.bin', 'vsim.wlf', '*.db', '*.do',
                 'txVector*.txt', 'hwregSettings*.txt', 'cSettings*.txt', 'analogSettings*.txt', 'radarSettings*.txt', 'simSettings*.txt']
-    for i in range(len(files_base)):
-        check_files =subprocess.run(['test', '-f', f'{shared_sims_storage}/clone_{dir_name_where}/{files_base[i]}'], stderr = subprocess.DEVNULL).returncode == 0 # check file in dir
+    for file in files_base:
+        check_files = Path(shared_sims_storage, f"clone_{dir_name_where}",file).is_file()
         if check_files == False:
-            files_copy = subprocess.call(f'cp -R {core.args.dest}/{files_base[i]} {shared_sims_storage}/clone_{dir_name_where}', shell = True, stderr = subprocess.DEVNULL).returncode == 0
-            if files_copy == False:
-                Logger.warning(f'{files_base[i]} file copy not success, please check files')
+            try:
+                shutil.copy(Path(core.args.dest, file), Path(shared_sims_storage, f'clone_{dir_name_where}'))
+            except FileNotFoundError:
+                Logger.warning(f'{file} file copy not success, please check files')
             else:
-                Logger.info(f'{files_base[i]} file copy success')
+                Logger.info(f'{file} file copy success')
         else:
-            Logger.warning(f'{files_base[i]} file exist')
+            Logger.warning(f'{file} file exist')
     subprocess.call(f'chmod -R 777 {shared_sims_storage}/clone_{dir_name_where}', shell = True, stderr = subprocess.DEVNULL)
     Logger.info('Success cloning dir with full permission')
     return 0

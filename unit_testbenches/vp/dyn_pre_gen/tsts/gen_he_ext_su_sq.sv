@@ -15,18 +15,19 @@ class gen_he_ext_su_sq extends base_sq;
     rand logic unsigned [GEN_BW_W - 1 : 0]      sys_bw;
     rand logic unsigned [3 : 0]                 ch_tx;
     rand logic unsigned                         nhtp_4ch;
+    rand logic unsigned [GEN_BW_W - 1 : 0]           pkt_bw;
+
     //----
-    logic unsigned [GEN_BW_W - 1 : 0]           pkt_bw;
     logic unsigned [GEN_SUBBAND_W - 1 : 0]      mu_subband_punct_coeff = 16'hFFFF;
-    localparam logic unsigned [4 : 0]                      format_he_ext_su       = 6;
+    logic unsigned [4 : 0]                      format_he_ext_su       = 6;
     //----
-    int gamma_rotation_coeff;
+    logic [GEN_GAMMA_W - 1 : 0]                 gamma_rotation_coeff   =  0;
     //----
-    localparam bit [GEN_GPIO_WIDTH - 1:0] START_SYS_PATTERN = {1'b0, 1'b0, format_he_ext_su, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0};
-    localparam bit [GEN_GPIO_WIDTH - 1:0] START_STF_PATTERN = {1'b0, 1'b0, format_he_ext_su, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0};
-    localparam bit [GEN_GPIO_WIDTH - 1:0] START_LTF_PATTERN = {1'b0, 1'b1, format_he_ext_su, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0};
-    localparam bit [GEN_GPIO_WIDTH - 1:0] END_LTF_PATTERN   = {1'b0, 1'b1, format_he_ext_su, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0};
-    localparam bit [GEN_GPIO_WIDTH - 1:0] END_SYS_PATTERN   = {1'b0, 1'b0, format_he_ext_su, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0};
+    bit [GEN_GPIO_WIDTH - 1:0]                  START_SYS_PATTERN;
+    bit [GEN_GPIO_WIDTH - 1:0]                  START_STF_PATTERN;
+    bit [GEN_GPIO_WIDTH - 1:0]                  START_LTF_PATTERN;
+    bit [GEN_GPIO_WIDTH - 1:0]                  END_LTF_PATTERN;
+    bit [GEN_GPIO_WIDTH - 1:0]                  END_SYS_PATTERN;    
     //----
     c_model_queues   m_model_queues;
     //----
@@ -52,9 +53,14 @@ task gen_he_ext_su_sq::pre_body();
                                         } else {
                                             ch_tx == 4;
                                         }});
-    gamma_rotation_coeff   = 0;
+    START_SYS_PATTERN = {1'b0, 1'b0, format_he_ext_su, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, ch_tx, nhtp_4ch, pkt_bw, sys_bw, mu_subband_punct_coeff, gamma_rotation_coeff};
+    START_STF_PATTERN = {1'b0, 1'b0, format_he_ext_su, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, ch_tx, nhtp_4ch, pkt_bw, sys_bw, mu_subband_punct_coeff, gamma_rotation_coeff};
+    START_LTF_PATTERN = {1'b0, 1'b1, format_he_ext_su, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, ch_tx, nhtp_4ch, pkt_bw, sys_bw, mu_subband_punct_coeff, gamma_rotation_coeff};
+    END_LTF_PATTERN   = {1'b0, 1'b1, format_he_ext_su, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, ch_tx, nhtp_4ch, pkt_bw, sys_bw, mu_subband_punct_coeff, gamma_rotation_coeff};
+    END_SYS_PATTERN   = {1'b0, 1'b0, format_he_ext_su, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, ch_tx, nhtp_4ch, pkt_bw, sys_bw, mu_subband_punct_coeff, gamma_rotation_coeff};
+
     run_ref_model_for_chain(int'(sys_bw), int'(pkt_bw), int'(format_he_ext_su), 
-    gamma_rotation_coeff, int'(mu_subband_punct_coeff), int'(ch_tx), int'(nhtp_4ch));
+    int'(gamma_rotation_coeff), int'(mu_subband_punct_coeff), int'(ch_tx), int'(nhtp_4ch));
 endtask: pre_body
 
 
@@ -67,12 +73,6 @@ task gen_he_ext_su_sq :: send_stf();
         end
         for (int i = 0; i < L_STF_MEM_SIZE; i++) begin
             trn.raddr            = i;
-            trn.sys_bw           = sys_bw;
-            trn.pkt_bw           = pkt_bw;
-            trn.n_tx             = ch_tx;
-            trn.gamma_rotation   = '0;
-            trn.mu_subband_punct = mu_subband_punct_coeff;
-            trn.nhtp_4ch         = nhtp_4ch;
             `uvm_send(trn)
         end
     join
@@ -87,12 +87,6 @@ task gen_he_ext_su_sq :: send_ltf();
         end 
         for (int i = 0; i < L_LTF_MEM_SIZE; i++) begin
             trn.raddr            = i;
-            trn.sys_bw           = sys_bw;
-            trn.pkt_bw           = pkt_bw;
-            trn.n_tx             = ch_tx;
-            trn.gamma_rotation   = '0;
-            trn.mu_subband_punct = mu_subband_punct_coeff;
-            trn.nhtp_4ch         = nhtp_4ch;
             `uvm_send(trn)
         end
     join

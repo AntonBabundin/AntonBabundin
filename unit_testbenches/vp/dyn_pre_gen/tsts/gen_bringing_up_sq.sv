@@ -14,8 +14,8 @@ class gen_bringing_up_sq extends base_sq;
     //---- THIS VARS BELOW YOU CAN CHANGE ----//
     localparam int                         L_LTF_MEM_SIZE_READ   =  5216; //Size of LTF mem to read
     localparam int                         L_STF_MEM_SIZE_READ   =  5120; //Size of STF mem to read
-    localparam logic [GEN_BW_W - 1 : 0]    SYS_BW_SWITHCER       =  5; // 320MHz
-    localparam logic [GEN_BW_W - 1 : 0]    PKT_BW_SWITHCER       =  4; // 320MHz 
+    localparam logic [GEN_BW_W - 1 : 0]    SYS_BW_SWITHCER       =  5; // 160MHz
+    localparam logic [GEN_BW_W - 1 : 0]    PKT_BW_SWITHCER       =  4; // 80MHz 
     localparam logic [3 : 0]               CH_TX_SWITHCER        =  4; // NHTP_4CH_SWITCHER == 1 -> CH_TX_SWITHCER == 4
     localparam logic                       NHTP_4CH_SWITCHER     =  1;
     localparam time                        CLK_PERIOD            =  1.5625ns;   // 640 MHz
@@ -25,11 +25,11 @@ class gen_bringing_up_sq extends base_sq;
     localparam time                        RESET_PERIOD          =  CLK_PERIOD*10;
 
     //---- THIS VARS BELOW YOU CAN'T CHANGE ----//
-    localparam bit [GEN_GPIO_WIDTH - 1:0] START_SYS_PATTERN     = {1'b0, 1'b0, FORMAT, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0};
-    localparam bit [GEN_GPIO_WIDTH - 1:0] START_STF_PATTERN = {1'b0, 1'b0, FORMAT, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0};
-    localparam bit [GEN_GPIO_WIDTH - 1:0] START_LTF_PATTERN = {1'b0, 1'b1, FORMAT, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0};
-    localparam bit [GEN_GPIO_WIDTH - 1:0] END_LTF_PATTERN   = {1'b0, 1'b1, FORMAT, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0};
-    localparam bit [GEN_GPIO_WIDTH - 1:0] END_SYS_PATTERN   = {1'b0, 1'b0, FORMAT, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0};
+    localparam bit [GEN_GPIO_WIDTH - 1:0] START_SYS_PATTERN = {1'b0, 1'b0, FORMAT, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, CH_TX_SWITHCER, NHTP_4CH_SWITCHER, PKT_BW_SWITHCER, SYS_BW_SWITHCER, MU_SUBBAND_PUCNT, GAMMA_ROTATION_COEFFS};
+    localparam bit [GEN_GPIO_WIDTH - 1:0] START_STF_PATTERN = {1'b0, 1'b0, FORMAT, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, CH_TX_SWITHCER, NHTP_4CH_SWITCHER, PKT_BW_SWITHCER, SYS_BW_SWITHCER, MU_SUBBAND_PUCNT, GAMMA_ROTATION_COEFFS};
+    localparam bit [GEN_GPIO_WIDTH - 1:0] START_LTF_PATTERN = {1'b0, 1'b1, FORMAT, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, CH_TX_SWITHCER, NHTP_4CH_SWITCHER, PKT_BW_SWITHCER, SYS_BW_SWITHCER, MU_SUBBAND_PUCNT, GAMMA_ROTATION_COEFFS};
+    localparam bit [GEN_GPIO_WIDTH - 1:0] END_LTF_PATTERN   = {1'b0, 1'b1, FORMAT, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, CH_TX_SWITHCER, NHTP_4CH_SWITCHER, PKT_BW_SWITHCER, SYS_BW_SWITHCER, MU_SUBBAND_PUCNT, GAMMA_ROTATION_COEFFS};
+    localparam bit [GEN_GPIO_WIDTH - 1:0] END_SYS_PATTERN   = {1'b0, 1'b0, FORMAT, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, CH_TX_SWITHCER, NHTP_4CH_SWITCHER, PKT_BW_SWITHCER, SYS_BW_SWITHCER, MU_SUBBAND_PUCNT, GAMMA_ROTATION_COEFFS};
 
     c_model_queues   m_model_queues;
 
@@ -59,12 +59,6 @@ task gen_bringing_up_sq :: send_stf();
         end
         for (int i =0; i < L_STF_MEM_SIZE_READ; i++) begin
             trn.raddr            = i;
-            trn.sys_bw           = SYS_BW_SWITHCER;
-            trn.pkt_bw           = PKT_BW_SWITHCER;
-            trn.n_tx             = CH_TX_SWITHCER;
-            trn.gamma_rotation   = GAMMA_ROTATION_COEFFS;
-            trn.mu_subband_punct = MU_SUBBAND_PUCNT;
-            trn.nhtp_4ch         = NHTP_4CH_SWITCHER;
             `uvm_send(trn)
         end
     join
@@ -80,12 +74,6 @@ task gen_bringing_up_sq :: send_ltf();
         end 
         for (int i = 0; i < L_LTF_MEM_SIZE_READ; i++) begin
             trn.raddr            = i;
-            trn.sys_bw           = SYS_BW_SWITHCER;
-            trn.pkt_bw           = PKT_BW_SWITHCER;
-            trn.n_tx             = CH_TX_SWITHCER;
-            trn.gamma_rotation   = GAMMA_ROTATION_COEFFS;
-            trn.mu_subband_punct = MU_SUBBAND_PUCNT;
-            trn.nhtp_4ch         = NHTP_4CH_SWITCHER;
             `uvm_send(trn)
         end
     join

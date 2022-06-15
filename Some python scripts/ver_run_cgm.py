@@ -1,6 +1,7 @@
 import subprocess
+import git
 import shutil
-import os
+import zipfile
 import yaml
 import re
 from pathlib import Path
@@ -61,36 +62,41 @@ def seq_without_clone_repo(core):
     return 0
 
 def clear_repo_dir():
-    shutil.copytree(Path(Path.cwd(), "test", _dir_with_settings_name), Path.cwd(), dirs_exist_ok=True) # Copy all settings from folder
-    subprocess.call(['rm','-rf'] + _files_to_del)
+    shutil.copytree(Path(Path.cwd(), "test", _dir_with_settings_name), Path.cwd(), dirs_exist_ok = True) # Copy all settings from folder
+    for file in _files_to_del:
+        Path(Path.cwd(), file).unlink()
     Logger.info("Script completed")
 
 def unpack_zip(_path_to_zip):
     Logger.info(f'Unpacking {_c_model_arch}')
-    exit_code = subprocess.run(['unzip', f'{Path(_path_to_zip, _c_model_arch)}', '-d', f'{_path_to_zip}'], stdout = subprocess.DEVNULL, stderr = subprocess.DEVNULL).returncode == 0
-    if not exit_code:
-        Logger.fatal("Error, unpacking fail")
-    else:
-        Logger.info("Unpacking success!!")
-        return 0
+    with zipfile.ZipFile(f'{Path(_path_to_zip, _c_model_arch)}',"r") as zip_ref:
+        try:
+            zip_ref.extractall(_path_to_zip)
+        except FileNotFoundError:
+            Logger.fatal("Error, unpacking fail")
+        else:
+            Logger.info("Unpacking success!!")
+            return 0
 
 def copy_dir(_path_to_zip):
     Logger.info('Start cloning files')
-    subprocess.run([f'cp', '--remove-destination', f'{Path(_path_to_zip, _c_model_meta)}', f'{_run_dir}'], stderr = subprocess.DEVNULL)
-    files_copy = subprocess.run(['cp', '--remove-destination', f'{Path(_path_to_zip, _dir_with_settings_name, "*")}', f'{_run_dir}'], stderr = subprocess.DEVNULL)
-    if files_copy.returncode != 0:
+    shutil.copy(Path(_path_to_zip, _c_model_meta), _run_dir)
+    try:
+        shutil.copy(Path(_path_to_zip, _dir_with_settings_name, "*"), _run_dir)
+    except FileNotFoundError:
         Logger.warning("File copy doesn't success, please check files")
     else:
         Logger.info('Files copy success')
     for file in _files_base:
-        files_copy_1 = subprocess.run(['cp', '--remove-destination', f'{Path(_path_to_zip, file)}', f'{_run_dir}'], stderr = subprocess.DEVNULL)
-        if files_copy_1.returncode != 0:
+        try:
+            shutil.copy(Path(_path_to_zip, file), _run_dir)
+        except FileNotFoundError:
             Logger.warning(f'{file} file copy not success, please check files')
         else:
             Logger.info(f'{file} file copy success')
     Logger.info('Delete unnecessary files')
     for file in _files_base_to_del:
-        subprocess.run(['rm', '-r', f'{Path(_path_to_zip, file)}'], stderr = subprocess.DEVNULL)
+        Path(_path_to_zip, file).unlink()
     Logger.info(f'Success cloning to dir {_run_dir}')
     return 0
 
@@ -98,6 +104,8 @@ def clone_git_repo(core, _path_to_zip):
     git_repo_commit = core.args.repo_commit
     git_repo_addr   = core.project.get_var("GIT_SYS_REP_ADDR")
     def clone_git(commit):
+        git.Git().clone(git_repo_addr)
+        git.cmd.Git().pull()
         subprocess.run(['git', 'init'], stderr = subprocess.DEVNULL)
         subprocess.run(['git', 'remote', 'add', 'origin', f"{git_repo_addr}"], stderr = subprocess.DEVNULL)
         subprocess.run(['git', 'fetch', '--depth', '1', "--recurse-submodules", '--no-tags', 'origin',  f"{commit}"], stderr = subprocess.DEVNULL)
@@ -106,7 +114,7 @@ def clone_git_repo(core, _path_to_zip):
         return 0
     if git_repo_commit == None:
         Logger.info(f"You use default commit from {_c_model_meta}")
-        with open(f"{Path(_path_to_zip, _c_model_meta)}", mode='r', encoding='utf-8') as f:
+        with open(f"{Path(_path_to_zip, _c_model_meta)}", mode = 'r', encoding = 'utf-8') as f:
             content = f.readlines()
             string = ''.join(content)
         commit_dflt = re.search(r'commit (\w+)', string).group(1) # Reading commit from meta with regexp
@@ -122,7 +130,7 @@ def c_main_cmpl(core):
         intermediate_list = str.split()
         return [f"{_run_dir}/"+ str_in_list for str_in_list in intermediate_list]
     # Reading make
-    with open(_makefile_name, mode='r', encoding='utf-8') as f:
+    with open(_makefile_name, mode = 'r', encoding = 'utf-8') as f:
         Logger.info(f"Reading data from {_makefile_name}")
         content = f.readlines()
         makefile_list = []

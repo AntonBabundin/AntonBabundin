@@ -9,19 +9,17 @@
 //  *** *** ***
 //     *
 //------------------------------------------------------------------------------
-class gen_ht_mf_sq extends base_sq;
-    `uvm_object_utils(gen_ht_mf_sq)
+class gen_eht_su_punct_sq extends base_sq;
+    `uvm_object_utils(gen_eht_su_punct_sq)
     //----
     rand logic unsigned [GEN_BW_W - 1 : 0]      sys_bw;
+    rand logic unsigned [GEN_BW_W - 1 : 0]      pkt_bw;
     rand logic unsigned [3 : 0]                 ch_tx;
     rand logic unsigned                         nhtp_4ch;
-    rand logic unsigned [GEN_BW_W - 1 : 0]      pkt_bw;
-
-    //----
-    logic unsigned [GEN_SUBBAND_W - 1 : 0]      mu_subband_punct_coeff = 16'hFFFF;
-    logic unsigned [4 : 0]                      format_ht_mf           = 1;
+    rand logic unsigned [GEN_SUBBAND_W - 1 : 0] mu_subband_punct_coeff;
     //----
     logic [GEN_GAMMA_W - 1 : 0]                 gamma_rotation_coeff   =  0;
+    logic unsigned [4 : 0]                      format_eht_su          = 8;
     //----
     bit [GEN_GPIO_WIDTH - 1:0]                  START_SYS_PATTERN;
     bit [GEN_GPIO_WIDTH - 1:0]                  START_STF_PATTERN;
@@ -31,40 +29,54 @@ class gen_ht_mf_sq extends base_sq;
     //----
     c_model_queues   m_model_queues;
     //----
-    extern function      new(string name = "gen_ht_mf_sq");
+    extern function      new(string name = "gen_eht_su_punct_sq");
     extern task          pre_body();
     extern task          body();
     extern task          send_stf();
     extern task          send_ltf();
 endclass
 
-function gen_ht_mf_sq::new(string name = "gen_ht_mf_sq");
+function gen_eht_su_punct_sq::new(string name = "gen_eht_su_punct_sq");
     super.new (name);
 endfunction: new
 
-task gen_ht_mf_sq::pre_body();
+task gen_eht_su_punct_sq::pre_body();
     void'(uvm_resource_db #(c_model_queues)::read_by_name("*", "m_model_queues", m_model_queues));
-    void'(std::randomize(sys_bw) with {sys_bw inside {[0:5]};});
-    void'(std::randomize(pkt_bw) with {pkt_bw inside  {0,1};
-                                       pkt_bw <= sys_bw;});
+    void'(std::randomize(sys_bw) with {sys_bw inside {[1:5]};});
+    void'(std::randomize(pkt_bw) with {if(sys_bw == 4){
+                                           pkt_bw inside  {[1:3]};
+                                           pkt_bw < sys_bw;
+                                       } else {
+                                           pkt_bw inside  {[1:4]};
+                                           pkt_bw <= sys_bw;
+                                       }});
     void'(std::randomize(nhtp_4ch));
     void'(std::randomize(ch_tx) with  { if(nhtp_4ch == 0){
                                             ch_tx == 2;
                                         } else {
                                             ch_tx == 4;
                                         }});
-    START_SYS_PATTERN = {1'b0, 1'b0, format_ht_mf, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, ch_tx, nhtp_4ch, pkt_bw, sys_bw, mu_subband_punct_coeff, gamma_rotation_coeff};
-    START_STF_PATTERN = {1'b0, 1'b0, format_ht_mf, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, ch_tx, nhtp_4ch, pkt_bw, sys_bw, mu_subband_punct_coeff, gamma_rotation_coeff};
-    START_LTF_PATTERN = {1'b0, 1'b1, format_ht_mf, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, ch_tx, nhtp_4ch, pkt_bw, sys_bw, mu_subband_punct_coeff, gamma_rotation_coeff};
-    END_LTF_PATTERN   = {1'b0, 1'b1, format_ht_mf, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, ch_tx, nhtp_4ch, pkt_bw, sys_bw, mu_subband_punct_coeff, gamma_rotation_coeff};
-    END_SYS_PATTERN   = {1'b0, 1'b0, format_ht_mf, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, ch_tx, nhtp_4ch, pkt_bw, sys_bw, mu_subband_punct_coeff, gamma_rotation_coeff};
+    void'(std::randomize(mu_subband_punct_coeff) with  { if(pkt_bw == 1){
+                                            mu_subband_punct_coeff[1 : 0] inside {'b01, 'b10};
+                                            mu_subband_punct_coeff[15:2] == '1;
+                                        } else if(pkt_bw == 2) {
+                                            mu_subband_punct_coeff[15:4] == '1;
+                                        } else if (pkt_bw == 3) {
+                                            mu_subband_punct_coeff[15:8] == '1;
+                                        }
+                                        });
+    START_SYS_PATTERN = {1'b0, 1'b0, format_eht_su, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, ch_tx, nhtp_4ch, pkt_bw, sys_bw, mu_subband_punct_coeff, gamma_rotation_coeff};
+    START_STF_PATTERN = {1'b0, 1'b0, format_eht_su, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, ch_tx, nhtp_4ch, pkt_bw, sys_bw, mu_subband_punct_coeff, gamma_rotation_coeff};
+    START_LTF_PATTERN = {1'b0, 1'b1, format_eht_su, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 1'b0, ch_tx, nhtp_4ch, pkt_bw, sys_bw, mu_subband_punct_coeff, gamma_rotation_coeff};
+    END_LTF_PATTERN   = {1'b0, 1'b1, format_eht_su, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, ch_tx, nhtp_4ch, pkt_bw, sys_bw, mu_subband_punct_coeff, gamma_rotation_coeff};
+    END_SYS_PATTERN   = {1'b0, 1'b0, format_eht_su, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, ch_tx, nhtp_4ch, pkt_bw, sys_bw, mu_subband_punct_coeff, gamma_rotation_coeff};
 
-    run_ref_model_for_chain(int'(sys_bw), int'(pkt_bw), int'(format_ht_mf), 
+    run_ref_model_for_chain(int'(sys_bw), int'(pkt_bw), int'(format_eht_su), 
     int'(gamma_rotation_coeff), int'(mu_subband_punct_coeff), int'(ch_tx), int'(nhtp_4ch));
 endtask: pre_body
 
 
-task gen_ht_mf_sq :: send_stf();
+task gen_eht_su_punct_sq :: send_stf();
     `uvm_create_on(trn, p_sequencer.m_dyn_pre_gen_sqr)
     fork 
         begin
@@ -78,7 +90,7 @@ task gen_ht_mf_sq :: send_stf();
     join
 endtask : send_stf
 
-task gen_ht_mf_sq :: send_ltf();
+task gen_eht_su_punct_sq :: send_ltf();
     `uvm_create_on(trn, p_sequencer.m_dyn_pre_gen_sqr)
     fork
         begin            
@@ -92,7 +104,7 @@ task gen_ht_mf_sq :: send_ltf();
     join
 endtask : send_ltf
 
-task gen_ht_mf_sq :: body();
+task gen_eht_su_punct_sq :: body();
     `uvm_info(get_name(), "Starting", local_vrb_lvl)
     fork
         begin
