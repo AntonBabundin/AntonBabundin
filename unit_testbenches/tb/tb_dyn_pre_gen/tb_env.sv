@@ -69,6 +69,7 @@ function void tb_env::connect_phase(uvm_phase phase);
     if(m_env_cfg.en_sb == UVM_ACTIVE) begin
         m_gen_in_ag.o_ap.connect(m_sb.i_ap_gen_din_mon.analysis_export);
         m_gen_out_ag.o_ap.connect(m_sb.i_ap_gen_dout_mon.analysis_export);
+        m_gpio_ag.o_ap.connect(m_sb.i_ap_gpio_mon.analysis_export);
     end
 endfunction
 
