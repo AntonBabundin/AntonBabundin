@@ -1,0 +1,14 @@
+files:
+  - tb.sv
+  - pytest/rr_seq.py:
+      filetype : pythonSource
+  - ${PROJECT_HOME}/src/modules-common/tb.yaml:
+      filetype : 'filelist'
+  - ${PROJECT_HOME}/src/module-axis-to-axi/tb_round_robin/pytest/components/logger.py:
+       filetype : pythonSource
+  - ${PROJECT_HOME}/src/module-axis-to-axi/tb_round_robin/pytest/components/constants.py:
+       filetype : pythonSource
+  - ${PROJECT_HOME}/src/module-axis-to-axi/tb_round_robin/pytest/components/rr_item.py:
+       filetype : pythonSource
+  - ${PROJECT_HOME}/src/module-axis-to-axi/tb_round_robin/model/rr_model.py:
+       filetype : pythonSource

@@ -1,0 +1,18 @@
+files:
+  - tb.sv
+  - pytest/dma_seq.py:
+      filetype : pythonSource
+  - ${PROJECT_HOME}/vivado_project/ip/tb.yaml:
+      filetype : 'filelist'
+  - ${PROJECT_HOME}/src/modules-common/tb.yaml:
+      filetype : 'filelist'
+  - ${PROJECT_HOME}/vivado_project/ip/tb.yaml:
+      filetype : 'filelist'
+  - ${PROJECT_HOME}/src/module-axis-to-axi/tb_py_cds/pytest/components/constants.py:
+       filetype : pythonSource
+  - ${PROJECT_HOME}/src/module-axis-to-axi/tb_py_cds/pytest/components/dma_item.py:
+       filetype : pythonSource
+  - ${PROJECT_HOME}/src/module-axis-to-axi/tb_py_cds/pytest/components/logger.py:
+       filetype : pythonSource
+  - ${PROJECT_HOME}/src/module-axis-to-axi/tb_py_cds/pytest/components/monitors.py:
+       filetype : pythonSource

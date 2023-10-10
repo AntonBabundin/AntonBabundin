@@ -1,0 +1,6 @@
+!/.gitignore
+__pycache__
+tb_py_cds/sim_build/
+tb_py_cds/.cocotb-results/
+tb_py_cds/.simvision/
+tb_py_cds/*.xml

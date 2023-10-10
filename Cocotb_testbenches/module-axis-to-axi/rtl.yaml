@@ -1,0 +1,12 @@
+files:
+  - src/artec_dma_pkg.sv
+  - src/apb/artec_dma_apb.sv
+  - src/apb/artec_dma_apb_top.sv
+  - src/artec_dma_cnv.sv
+  - src/artec_dma_channel.sv
+  - src/artec_dma_arb_rr.sv
+  - src/artec_dma_arb.sv
+  - src/artec_dma_sync_vr.sv
+  - src/artec_dma_header.sv
+  - src/artec_dma_top.sv
+

@@ -1,0 +1,342 @@
+regfile DMA_t {
+    name = "DMA";
+    desc = "AXI-Stream to AXI DMA module.
+
+There are two main puproses of the DMA IP module:
+1. To store the streams data to the external memory on the PC using programmed address registers.
+2. To synchronize the channels with each other using tuser field of the AXI-Stream interface.
+
+# TUSER structure
+
+The format of the tuser field:
+
+| Bits  | Name           | Description                                                                 |
+|-------|----------------|---------------------------------------------------------------------------- |
+| 0     | Start of Frame | Flag to indicate that current word is first word in the current frame       |
+| 3:1   | Frame Number   | Ths field is set by Flash IP, which sends the control signals to the sensor |
+| 4     | End of Frame   | Flag to indicate that current word is last word in the current frame        |
+
+# Memory organization
+
+Memory is allocated on the PC memory side for the each Frame Number (8 regions for the current version).
+To provide address of the each frame buffer, driver has to program the following registers: [FRAME_PTR_0](#FRAME_PTR_0) ... [FRAME_PTR_7](#FRAME_PTR_7).
+The each frame is a bundle of the all channels with corresponded frame number. Structure of the bundle is presented in the following table:
+
+| Region Name | Offset                          | Size                            |
+|-------------|---------------------------------|---------------------------------|
+| Channel_0   | [OFFSET_0](#OFFSET_0)           | [CHANNEL_SIZE_0](#CHANNEL_SIZE_0) |
+| Channel_1   | [OFFSET_1](#OFFSET_1)           | [CHANNEL_SIZE_1](#CHANNEL_SIZE_1) |
+| Channel_2   | [OFFSET_2](#OFFSET_2)           | [CHANNEL_SIZE_2](#CHANNEL_SIZE_2) |
+| Channel_3   | [OFFSET_3](#OFFSET_3)           | [CHANNEL_SIZE_3](#CHANNEL_SIZE_3) |
+| Channel_4   | [OFFSET_4](#OFFSET_4)           | [CHANNEL_SIZE_4](#CHANNEL_SIZE_4) |
+| Channel_5   | [OFFSET_5](#OFFSET_5)           | [CHANNEL_SIZE_5](#CHANNEL_SIZE_5) |
+| Header      | [HEADER_OFFSET](#HEADER_OFFSET) | [HEADER_SIZE](#HEADER_SIZE)     |
+
+Structure of the PC memory is presented in the following table:
+
+| Region Name | Offset                          | Size                            |
+|-------------|---------------------------------|---------------------------------|
+| Frame 0     | [FRAME_PTR_0](#FRAME_PTR_0)     | SUM([CHANNEL_SIZE_0](#CHANNEL_SIZE_0) ... [CHANNEL_SIZE_5](#CHANNEL_SIZE_5)) + [HEADER_SIZE](#HEADER_SIZE) |
+| Frame 1     | [FRAME_PTR_1](#FRAME_PTR_1)     | SUM([CHANNEL_SIZE_0](#CHANNEL_SIZE_0) ... [CHANNEL_SIZE_5](#CHANNEL_SIZE_5)) + [HEADER_SIZE](#HEADER_SIZE) |
+| Frame 2     | [FRAME_PTR_2](#FRAME_PTR_2)     | SUM([CHANNEL_SIZE_0](#CHANNEL_SIZE_0) ... [CHANNEL_SIZE_5](#CHANNEL_SIZE_5)) + [HEADER_SIZE](#HEADER_SIZE) |
+| Frame 3     | [FRAME_PTR_3](#FRAME_PTR_3)     | SUM([CHANNEL_SIZE_0](#CHANNEL_SIZE_0) ... [CHANNEL_SIZE_5](#CHANNEL_SIZE_5)) + [HEADER_SIZE](#HEADER_SIZE) |
+| Frame 4     | [FRAME_PTR_4](#FRAME_PTR_4)     | SUM([CHANNEL_SIZE_0](#CHANNEL_SIZE_0) ... [CHANNEL_SIZE_5](#CHANNEL_SIZE_5)) + [HEADER_SIZE](#HEADER_SIZE) |
+| Frame 5     | [FRAME_PTR_5](#FRAME_PTR_5)     | SUM([CHANNEL_SIZE_0](#CHANNEL_SIZE_0) ... [CHANNEL_SIZE_5](#CHANNEL_SIZE_5)) + [HEADER_SIZE](#HEADER_SIZE) |
+| Frame 6     | [FRAME_PTR_6](#FRAME_PTR_6)     | SUM([CHANNEL_SIZE_0](#CHANNEL_SIZE_0) ... [CHANNEL_SIZE_5](#CHANNEL_SIZE_5)) + [HEADER_SIZE](#HEADER_SIZE) |
+| Frame 7     | [FRAME_PTR_7](#FRAME_PTR_7)     | SUM([CHANNEL_SIZE_0](#CHANNEL_SIZE_0) ... [CHANNEL_SIZE_5](#CHANNEL_SIZE_5)) + [HEADER_SIZE](#HEADER_SIZE) |
+
+# Channel synchronization
+
+The each of the streams has to send EoF flag using TUSER field, which indicates that all data for this channel regarding to specific frame number has been transfered.
+When all channels send the EoF, the DMAa generates header with specific information (please find detailed header description here) and transfers this header to the PC memory by [HEADER_OFFSET](#HEADER_OFFSET).
+After that, DMA updates the STATUS WORD and transfers it to the PC memory by [FRAME_STATUS_PTR](#FRAME_STATUS_PTR).
+The following table describes the frame_status memory cell [FRAME_STATUS_PTR](#FRAME_STATUS_PTR) :
+
+| Bits  | Name         | Description                                                                                                                                                                                                                                                                                                                                             |
+|-------|--------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 7:0   | Frame_Status | Each bit shows validity of the related frame buffer. Initial value: 0b00000000; When bundle succesfully transfered to the memory (all channels and header), related bit is set to 1 and next bit (next frame) is set to 0. In normal mode, frames is going sequentially (0,1,2,3,4,5,6,7,0,1,2,3...). If something goes wrong, frame_status is cleared. |
+| 31:24 | Reserved     |                                                                                                                                                                                                                                                                                                                                                         |
+| 63:32 | Frame_id     | Frame id of the last frame, which was succesfully transfered to the memory                                                                                                                                                                                                                                                                              |
+
+# Header structure description
+
+| Offset | Bits | Name    | Description |
+|--------|------|---------|-------------|
+| 0x0    | 31:0 | FrameID_LOW   | Frame identificator. Incremented every trigger of the FLASH IP. |
+| 0x4    | 28:0 | FrameID_HIGH  | Frame identificator. Incremented every trigger of the FLASH IP. |
+| 0x4    | 31:29 | Flash Enable  | Flash enable flag. This field indicates which flashes have been activated during capturing |
+| 0x8    | 31:0 | Timestamp_LOW | Timestamp. Incremented every CLK_74_MHz clock and captured by trigger. |
+| 0xC    | 31:0 | Timestam_HIGH | Timestamp. Incremented every CLK_74_MHz clock and captured by trigger. |
+| 0x10   | 31:0 | Channel0_NE   | Number of elements in the Channel0. |
+| 0x14   | 31:0 | Channel1_NE   | Number of elements in the Channel1. |
+| 0x18   | 31:0 | Channel2_NE   | Number of elements in the Channel2. |
+| 0x1C   | 31:0 | Channel3_NE   | Number of elements in the Channel3. |
+| 0x20   | 31:0 | Channel4_NE   | Number of elements in the Channel4. |
+| 0x24   | 31:0 | Channel5_NE   | Number of elements in the Channel5. |
+
+# Turn on/off procedures  
+
+To turn on the DMA follow the next steps: 
+- Check that DMA in the idle state by finish bit reading of the [DMA_ENABLE](#DMA_ENABLE) register;  
+- Program the all registers to program address and offsets;  
+- Enable DMA by writing 1 to enable field of the [DMA_ENABLE](#DMA_ENABLE) register;   
+- Write channel mask to open the specificed channels [MASK_ENABLE](#MASK_ENABLE);  
+
+To turn off the DMA:
+- Clear the mask channel [MASK_ENABLE](#MASK_ENABLE) register;
+- Disable DMA by writing 0 to the enable field of the [DMA_ENABLE](#DMA_ENABLE) register;  
+- Wait while the finish field will be set to 1 [DMA_ENABLE](#DMA_ENABLE) register;  
+- Procedure is finish;  
+
+To clear the DMA:
+- Turn off it properly;  
+- Write 1 to the clear field of the [DMA_ENABLE](#DMA_ENABLE) register;  
+- Wait while the clear field will be set to 0;  
+
+Clear operation is possible only when finish field indicates that all transactions have been finished;  
+
+# Notes  
+
+Don't use the MEMORY_SIZE_n registers. These registers will be depricated in the near future. 
+
+";
+
+    reg {
+      desc = "Block identification register";
+      field { name="apb_id"; sw=r; hw=r; desc="";} apb_id[32] = 32'hA3D0000;
+      dontcompare = 1;
+    } APB_ID;
+
+    reg {
+      desc = "Block version register";
+      field { name="version"; sw=r; hw=r; desc="";} version[32] = 32'h2;
+      dontcompare = 1;
+    } VERSION;
+
+    reg {
+      desc = "Number of the AXI-S channels";
+      field { name="ch_num"; sw=r; hw=r; desc="";} ch_num[32] = 32'h6;
+      dontcompare = 1;
+    } CH_NUM;
+
+    reg {
+      desc = "Header size in bytes";
+      field { name="header_size"; sw=r; hw=r; desc="";} header_size[32] = 32'h1000;
+      dontcompare = 1;
+    } HEADER_SIZE;
+
+    // CHANNEL 0
+     reg {
+      desc = "CHANNEL SIZE in bytes for channel 0. If number of the received data more than specificed in this register, the data will be overwritten.";
+      field { name="channel_size"; sw=rw; hw=r; desc="";} channel_size[32] = 32'h00DB_0000;
+    } CHANNEL_SIZE_0 @ 0x14;
+
+    reg {
+      desc = "Offset from frame pointer in bytes for channel 0";
+      field { name="offset"; sw=rw; hw=r; desc="";} offset[32] = 32'h0;
+    } OFFSET_0;
+
+    reg {
+      desc = "Bytes per element for channel 0";
+      field { name="bpe"; sw=r; hw=r; desc="Bytes per element";} bpp[16] = 16'h2;
+      dontcompare = 1;
+    } BPE_0;
+
+    reg {
+      desc = "Type for channel 0";
+      field { name="type"; sw=r; hw=r; desc="Bytes per pixel";} ttype[32] = 32'h20_30_52_4C;
+      dontcompare = 1;
+    } TYPE_0;
+
+    // CHANNEL 1
+     reg {
+      desc = "CHANNEL SIZE in bytes for channel 0. If number of the received data more than specificed in this register, the data will be overwritten.";
+      field { name="channel_size"; sw=rw; hw=r; desc="";} channel_size[32] = 32'h00DB_0000;
+    } CHANNEL_SIZE_1;
+
+    reg {
+      desc = "Offset from frame pointer in bytes for channel 0";
+      field { name="offset"; sw=rw; hw=r; desc="";} offset[32] = 32'h00DB_0000;
+    } OFFSET_1;
+
+    reg {
+      desc = "Bytes per element for channel 1";
+      field { name="bpe"; sw=r; hw=r; desc="Bytes per element";} bpp[16] = 16'h2;
+      dontcompare = 1;
+    } BPE_1;
+
+    reg {
+      desc = "Type for channel 1";
+      field { name="type"; sw=r; hw=r; desc="Bytes per pixel";} ttype[32] = 32'h20_30_52_54;
+      dontcompare = 1;
+    } TYPE_1;
+
+    // CHANNEL 2
+     reg {
+      desc = "CHANNEL SIZE in bytes for channel 0. If number of the received data more than specificed in this register, the data will be overwritten.";
+      field { name="channel_size"; sw=rw; hw=r; desc="";} channel_size[32] = 32'h00DB_0000;
+    } CHANNEL_SIZE_2;
+
+    reg {
+      desc = "Offset from frame pointer in bytes for channel 0";
+      field { name="offset"; sw=rw; hw=r; desc="";} offset[32] = 32'h01B6_0000;
+    } OFFSET_2;
+
+    reg {
+      desc = "Bytes per element for channel 2";
+      field { name="bpe"; sw=r; hw=r; desc="Bytes per element";} bpp[16] = 16'h2;
+      dontcompare = 1;
+    } BPE_2;
+
+    reg {
+      desc = "Type for channel 2";
+      field { name="type"; sw=r; hw=r; desc="Bytes per pixel";} ttype[32] = 32'h20_31_52_4C;
+      dontcompare = 1;
+    } TYPE_2;
+
+    // CHANNEL 3
+     reg {
+      desc = "CHANNEL SIZE in bytes for channel 0. If number of the received data more than specificed in this register, the data will be overwritten.";
+      field { name="channel_size"; sw=rw; hw=r; desc="";} channel_size[32] = 32'h00DB_0000;
+    } CHANNEL_SIZE_3;
+
+    reg {
+      desc = "Offset from frame pointer in bytes for channel 0";
+      field { name="offset"; sw=rw; hw=r; desc="";} offset[32] = 32'h0291_0000;
+    } OFFSET_3;
+
+    reg {
+      desc = "Bytes per element for channel 3";
+      field { name="bpe"; sw=r; hw=r; desc="Bytes per element";} bpp[16] = 16'h2;
+      dontcompare = 1;
+    } BPE_3;
+
+    reg {
+      desc = "Type for channel 3";
+      field { name="type"; sw=r; hw=r; desc="Bytes per pixel";} ttype[32] = 32'h20_31_52_54;
+      dontcompare = 1;
+    } TYPE_3;
+
+    // CHANNEL 4
+     reg {
+      desc = "CHANNEL SIZE in bytes for channel 0. If number of the received data more than specificed in this register, the data will be overwritten.";
+      field { name="channel_size"; sw=rw; hw=r; desc="";} channel_size[32] = 32'h00DB_0000;
+    } CHANNEL_SIZE_4;
+
+    reg {
+      desc = "Offset from frame pointer in bytes for channel 0";
+      field { name="offset"; sw=rw; hw=r; desc="";} offset[32] = 32'h036C_0000;
+    } OFFSET_4;
+
+    reg {
+      desc = "Bytes per element for channel 4";
+      field { name="bpe"; sw=r; hw=r; desc="Bytes per element";} bpp[16] = 16'h2;
+      dontcompare = 1;
+    } BPE_4;
+
+    reg {
+      desc = "Type for channel 4";
+      field { name="type"; sw=r; hw=r; desc="Bytes per pixel";} ttype[32] = 32'h20_32_52_4C;
+      dontcompare = 1;
+    } TYPE_4;
+
+    // CHANNEL 5
+     reg {
+      desc = "CHANNEL SIZE in bytes for channel 0. If number of the received data more than specificed in this register, the data will be overwritten.";
+      field { name="channel_size"; sw=rw; hw=r; desc="";} channel_size[32] = 32'h00DB_0000;
+    } CHANNEL_SIZE_5;
+
+    reg {
+      desc = "Offset from frame pointer in bytes for channel 0";
+      field { name="offset"; sw=rw; hw=r; desc="";} offset[32] = 32'h0447_0000;
+    } OFFSET_5;
+
+    reg {
+      desc = "Bytes per element for channel 5";
+      field { name="bpe"; sw=r; hw=r; desc="Bytes per element";} bpp[16] = 16'h2;
+      dontcompare = 1;
+    } BPE_5;
+
+    reg {
+      desc = "Type for channel 5";
+      field { name="type"; sw=r; hw=r; desc="Bytes per pixel";} ttype[32] = 32'h20_32_52_54;
+      dontcompare = 1;
+    } TYPE_5;
+
+    // Frame pointers
+
+    reg {
+      desc = "Frame pointer in bytes for the fnum = 0";
+      field { name="frame_ptr"; sw=rw; hw=r; desc="";} frame_ptr[32] = 32'h0;
+    } FRAME_PTR_0 @0xC0;
+
+    reg {
+      desc = "Frame pointer in bytes for the fnum = 1";
+      field { name="frame_ptr"; sw=rw; hw=r; desc="";} frame_ptr[32] = 32'h0;
+    } FRAME_PTR_1;
+
+    reg {
+      desc = "Frame pointer in bytes for the fnum = 2";
+      field { name="frame_ptr"; sw=rw; hw=r; desc="";} frame_ptr[32] = 32'h0;
+    } FRAME_PTR_2;
+
+    reg {
+      desc = "Frame pointer in bytes for the fnum = 3";
+      field { name="frame_ptr"; sw=rw; hw=r; desc="";} frame_ptr[32] = 32'h0;
+    } FRAME_PTR_3;
+
+    reg {
+      desc = "Frame pointer in bytes for the fnum = 4";
+      field { name="frame_ptr"; sw=rw; hw=r; desc="";} frame_ptr[32] = 32'h0;
+    } FRAME_PTR_4;
+
+    reg {
+      desc = "Frame pointer in bytes for the fnum = 5";
+      field { name="frame_ptr"; sw=rw; hw=r; desc="";} frame_ptr[32] = 32'h0;
+    } FRAME_PTR_5;
+
+    reg {
+      desc = "Frame pointer in bytes for the fnum = 6";
+      field { name="frame_ptr"; sw=rw; hw=r; desc="";} frame_ptr[32] = 32'h0;
+    } FRAME_PTR_6;
+
+    reg {
+      desc = "Frame pointer in bytes for the fnum = 7";
+      field { name="frame_ptr"; sw=rw; hw=r; desc="";} frame_ptr[32] = 32'h0;
+    } FRAME_PTR_7;
+
+    reg {
+      desc = "Frame pointer in bytes for the status word";
+      field { name="frame_status_ptr"; sw=rw; hw=r; desc="";} frame_status_ptr[32] = 32'h0;
+      dontcompare = 1;
+    } FRAME_STATUS_PTR;
+
+    // Control
+
+    reg {
+      desc = "Channel mask register";
+      field { name="mask_enable_0"; sw=rw; hw=r; desc="Channel 0 mask enable. 0 - disabled; 1 - enabled";} mask_enable_0[1] = 1'b0;
+      field { name="mask_enable_1"; sw=rw; hw=r; desc="Channel 1 mask enable. 0 - disabled; 1 - enabled";} mask_enable_1[1] = 1'b0;
+      field { name="mask_enable_2"; sw=rw; hw=r; desc="Channel 2 mask enable. 0 - disabled; 1 - enabled";} mask_enable_2[1] = 1'b0;
+      field { name="mask_enable_3"; sw=rw; hw=r; desc="Channel 3 mask enable. 0 - disabled; 1 - enabled";} mask_enable_3[1] = 1'b0;
+      field { name="mask_enable_4"; sw=rw; hw=r; desc="Channel 4 mask enable. 0 - disabled; 1 - enabled";} mask_enable_4[1] = 1'b0;
+      field { name="mask_enable_5"; sw=rw; hw=r; desc="Channel 5 mask enable. 0 - disabled; 1 - enabled";} mask_enable_5[1] = 1'b0;
+    } MASK_ENABLE;
+
+    reg {
+      desc = "Enable register";
+      field { name="enable"; sw=rw; hw=r; desc="DMA enable. 0 - disabled; 1 - enabled";} enable[1] = 1'b0;
+      field { name="clear"; sw=rw; hw=r; desc="Clear all registers and FIFOs inside DMA";} clear[1] = 1'b0;
+      field { name="stsclr"; sw=rw; hw=r; desc="Clear the FIFO overflow flags";} stsclr[1] = 1'b0;
+      field { name="finish"; sw=r; hw=rw; desc="Indicates that all transactions have been finished";} finish[1] = 1'b0;
+    } DMA_ENABLE;
+
+
+    reg {
+      desc = "Status register";
+      field { name="frame_status"; sw=rw; hw=r; desc="Frame status. The behaviour is described in the main section of the DMA";} frame_status[8] = 8'b0;
+      dontcompare = 1;
+    } FRAME_STATUS;
+
+
+};

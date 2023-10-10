@@ -1,0 +1,10 @@
+files:
+    - ${PROJECT_HOME}/src/modules-common/rtl.yaml:
+        filetype : filelist
+    - ${PROJECT_HOME}/src/module-slvs-ec/src/artec_slvs_ec_pkg.sv
+    - ${PROJECT_HOME}/src/module-axis-to-axi/rtl.yaml:
+        filetype : 'filelist'
+    - ${PROJECT_HOME}/src/module-monitor/rtl.yaml:
+        filetype : 'filelist'
+    - tb.yaml:
+        filetype : 'filelist'
