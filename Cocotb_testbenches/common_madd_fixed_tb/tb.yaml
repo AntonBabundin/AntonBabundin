@@ -1,0 +1,8 @@
+files:
+  - ${PROJECT_HOME}/src/modules-common/rtl/sv/interfaces/artec_interfaces.sv
+  - tb.sv
+  - glbl.v
+  - pytest/common_madd_fixed_seq.py:
+      filetype : pythonSource
+  - ${PROJECT_HOME}/src/modules-common/tb.yaml:
+      filetype : 'filelist'

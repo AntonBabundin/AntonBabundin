@@ -1,0 +1,3 @@
+files:
+  - ${PROJECT_HOME}/src/modules-common/rtl.yaml:
+      filetype : 'filelist'
