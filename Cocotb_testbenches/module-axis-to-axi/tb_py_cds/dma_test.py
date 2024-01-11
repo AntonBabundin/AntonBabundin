@@ -22,6 +22,7 @@ _test_case_2 = "axis_channel_seq"
 _test_case_3 = "axis_full_channel_seq"
 _test_case_4 = "frame_reg_status_seq"
 _test_case_5 = "turn_off_on_seq"
+_test_case_6 = "test_default"
 
 axis_channel = [x for x in range(6)]
 frame_ptr = [x for x in range(8)]
@@ -153,4 +154,25 @@ def test_turn_off_on(random_frames):
         toplevel             = "{:}.{:}".format(settings['work_lib'],settings['toplevel']),  # top level HDL
         module               = _test_name                                                 ,# name of cocotb test module
         testcase             = _test_case_5
+    )
+
+def test_default():
+    settings = questa.get_questa_settings(coverage=False, xcelium=True)
+    run(
+        vhdl_sources         = settings['vhdl_sources'],                                     # vhdl sources
+        verilog_sources      = settings['verilog_sources'],                                  # verilog sources
+        includes             = settings['includes'],
+        python_search        = settings['python_search'],                                    # python directories
+        
+        extra_args           = settings['extra_args'] +['-top glbl'],
+        sim_args             = sim_args,
+        sim_build            = settings['sim_build'],
+        seed                 = 1667310453,
+
+        force_compile        = True,
+        toplevel_lang        = 'verilog',
+        gui                  = _gui_start,
+        toplevel             = "{:}.{:}".format(settings['work_lib'],settings['toplevel']),  # top level HDL
+        module               = _test_name                                                 ,# name of cocotb test module
+        testcase             = _test_case_6
     )

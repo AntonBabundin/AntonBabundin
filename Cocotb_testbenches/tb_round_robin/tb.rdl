@@ -1,0 +1,8 @@
+`include "../doc/regs.rdl"
+
+addrmap DUT {
+    name = "DUT";
+    desc = "DUT register map";
+
+    DMA_t DMA;
+};

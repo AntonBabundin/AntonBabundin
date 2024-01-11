@@ -321,6 +321,22 @@ async def turn_off_on_seq(dut):
     logging.critical("Header is correct")
     logging.critical(f"Frames qty = {frames}")
     logging.critical("Test complete")
+
+@cocotb.test()
+async def test_default(dut):
+    """DMA DEFAULT TEST"""
+    SetupLog()
+    tb = Connection(dut)
+    apb_monitor=APBContainer()
+    frame_header_monitor=FrameStatusHeaderContainer()
+    logging.critical("Regmap initialize")
+    regmap = a3d_regs.get_register_map(os.environ["RDL_FILE"])['DMA']
+
+    logging.critical("Resets start")
+    await Combine(misc.reset_on_clock(dut.rstn, dut.clk), misc.reset_on_clock(dut.apb_rstn, dut.clk))  # Reset phase
+    logging.critical("Resets end")
+
+    logging.critical("Test complete")
 ##################################
 ### Little sequences for tests ###
 ##################################
